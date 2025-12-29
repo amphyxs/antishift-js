@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bouncing Button</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: Arial, sans-serif;
+      }
+
+      .container {
+        position: relative;
+        width: 600px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+      }
+
+      #bouncingButton {
+        position: absolute;
+        top: 50%;
+        left: 50px;
+        transform: translateY(-50%);
+        padding: 15px 30px;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 4px 15px 0 rgba(252, 104, 110, 0.75);
+      }
+
+      #bouncingButton:hover {
+        transform: translateY(-50%) scale(1.05);
+        box-shadow: 0 6px 20px 0 rgba(252, 104, 110, 0.85);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <button id="bouncingButton">Click Me!</button>
+    </div>
+
+    <script>
+      const button = document.getElementById("bouncingButton");
+      let isLeft = true;
+
+      function throwButton() {
+        // Instantly move button to opposite position
+        if (isLeft) {
+          button.style.left = "calc(100% - 200px)";
+        } else {
+          button.style.left = "50px";
+        }
+
+        // Toggle position for next throw
+        isLeft = !isLeft;
+      }
+
+      // Throw button immediately
+      throwButton();
+
+      // Continue throwing every 5 seconds
+      let intervalId = setInterval(throwButton, 1000);
+
+      // Optional: Add click event
+      button.addEventListener("click", function () {
+        console.log("Button clicked!");
+      });
+
+      // External library to prevent layout shifts on hover
+      let mouseX = 0;
+      let mouseY = 0;
+      let hoveredElement = null;
+      let frozenStyles = new WeakMap();
+      let isReverting = false; // Prevent infinite loop
+
+      // Track mouse position globally
+      document.addEventListener("mousemove", (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      // Observe all style mutations in the document
+      const observer = new MutationObserver((mutations) => {
+        if (isReverting) return; // Skip if we're reverting to prevent recursion
+
+        mutations.forEach((mutation) => {
+          if (
+            mutation.type === "attributes" &&
+            mutation.attributeName === "style"
+          ) {
+            const target = mutation.target;
+            // If this element is hovered, revert style changes
+            // if (hoveredElement && (target === hoveredElement || hoveredElement.contains(target))) {
+            if (hoveredElement && target === hoveredElement) {
+              const frozen = frozenStyles.get(target);
+              const currentStyle = target.getAttribute("style") || "";
+
+              // Only revert if style actually changed
+              if (frozen !== undefined && currentStyle !== frozen) {
+                isReverting = true;
+                observer.disconnect(); // Temporarily disconnect to prevent recursion
+                target.setAttribute("style", frozen);
+                observer.observe(document.body, {
+                  attributes: true,
+                  attributeFilter: ["style"],
+                  subtree: true,
+                });
+                isReverting = false;
+              }
+            }
+          }
+        });
+      });
+
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["style"],
+        subtree: true,
+      });
+
+      function myAnimationLoop(timestamp) {
+        // Detect what element is under the mouse
+        const element = document.elementFromPoint(mouseX, mouseY);
+        const wasHovering = hoveredElement;
+
+        // Update hovered element (null if mouse is over body or html)
+        if (
+          element &&
+          element !== document.body &&
+          element !== document.documentElement
+        ) {
+          hoveredElement = element;
+
+          // If started hovering a new element, freeze its current style
+          if (element !== wasHovering) {
+            frozenStyles.set(element, element.getAttribute("style") || "");
+          }
+        } else {
+          // Clear hovered element when mouse is not over any specific element
+          hoveredElement = null;
+        }
+
+        requestAnimationFrame(myAnimationLoop);
+      }
+      requestAnimationFrame(myAnimationLoop);
+    </script>
+  </body>
+</html>
