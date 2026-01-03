@@ -14,6 +14,54 @@ document.addEventListener("mousemove", (e) => {
   mouseY = e.clientY;
 });
 
+// Check if an element is clickable
+function isElementClickable(element) {
+  // Check for native clickable elements
+  if (element.tagName === "BUTTON") return true;
+  if (element.tagName === "A" && element.href) return true;
+  if (
+    element.tagName === "INPUT" &&
+    (element.type === "button" ||
+      element.type === "submit" ||
+      element.type === "reset" ||
+      element.type === "checkbox" ||
+      element.type === "radio")
+  )
+    return true;
+  if (element.tagName === "SELECT") return true;
+  if (element.tagName === "TEXTAREA") return true;
+
+  // Check for elements with click-related attributes
+  if (element.getAttribute && element.getAttribute("role") === "button")
+    return true;
+  if (element.onclick) return true;
+
+  // Check for elements with click event listeners
+  // Note: This is a simplified check and may not catch all cases
+  const hasClickListeners =
+    element.hasAttribute("data-click-listener") ||
+    element.hasAttribute("ng-click") || // Angular
+    element.hasAttribute("v-on:click") || // Vue
+    element.hasAttribute("@click"); // Vue shorthand
+
+  if (hasClickListeners) return true;
+
+  // For other elements, check if they have any click event listeners
+  // This is a more expensive check, so we do it last
+  try {
+    // This is a heuristic - we can't easily check for all possible event listeners
+    // But we can check for some common patterns
+    return (
+      element.getAttribute("tabindex") === "0" ||
+      element.hasAttribute("data-toggle") ||
+      element.hasAttribute("data-target")
+    );
+  } catch (e) {
+    // If we can't determine, err on the side of caution
+    return false;
+  }
+}
+
 // Observe all mutations in the document
 const observer = new MutationObserver((mutations) => {
   console.log(
@@ -22,24 +70,27 @@ const observer = new MutationObserver((mutations) => {
     "mutations"
   );
 
-  // If no button is hovered, do nothing
+  // If no clickable element is hovered, do nothing
   if (!hoveredElement) {
-    console.log("[Antishift] No hovered button, skipping mutations");
+    console.log("[Antishift] No hovered clickable element, skipping mutations");
     return;
   }
 
-  // Store the previous position of the hovered button once for all mutations in this batch
+  // Store the previous position of the hovered clickable element once for all mutations in this batch
   const previousRect = hoveredElementRect;
   console.log(
-    "[Antishift] Using previous button rect for all mutations in this batch:",
+    "[Antishift] Using previous clickable element rect for all mutations in this batch:",
     previousRect
   );
 
-  // Get current position of hovered button for comparison
+  // Get current position of hovered clickable element for comparison
   const currentRect = hoveredElement.getBoundingClientRect();
-  console.log("[Antishift] Current hovered button rect:", currentRect);
+  console.log(
+    "[Antishift] Current hovered clickable element rect:",
+    currentRect
+  );
 
-  // Check if the hovered button's position has changed
+  // Check if the hovered clickable element's position has changed
   const hasPositionChanged =
     previousRect &&
     (previousRect.left !== currentRect.left ||
@@ -110,7 +161,7 @@ const observer = new MutationObserver((mutations) => {
       );
     }
 
-    // Check if this mutation affected the hovered button's position
+    // Check if this mutation affected the hovered clickable element's position
     if (
       isMutationAffectingHoveredElement(
         mutation,
@@ -118,12 +169,14 @@ const observer = new MutationObserver((mutations) => {
         hasPositionChanged
       )
     ) {
-      console.log("[Antishift] Mutation affects hovered button, pausing it");
+      console.log(
+        "[Antishift] Mutation affects hovered clickable element, pausing it"
+      );
       // Pause this mutation
       pauseMutation(mutation);
     } else {
       console.log(
-        "[Antishift] Mutation does not affect hovered button, skipping"
+        "[Antishift] Mutation does not affect hovered clickable element, skipping"
       );
     }
   });
@@ -138,13 +191,15 @@ observer.observe(document.body, {
   characterDataOldValue: true,
 });
 
-// Check if a mutation affects the hovered button's position
+// Check if a mutation affects the hovered clickable element's position
 function isMutationAffectingHoveredElement(
   mutation,
   previousRect,
   hasPositionChanged
 ) {
-  console.log("[Antishift] Checking if mutation affects hovered button");
+  console.log(
+    "[Antishift] Checking if mutation affects hovered clickable element"
+  );
 
   // If there's no previous position, return false
   if (!previousRect) {
@@ -152,7 +207,7 @@ function isMutationAffectingHoveredElement(
     return false;
   }
 
-  // Check if mouse was over the hovered button at its previous position
+  // Check if mouse was over the hovered clickable element at its previous position
   // Both mouseX/mouseY and previousRect are viewport-relative, so we can compare directly
   const wasMouseOverHovered =
     mouseX >= previousRect.left &&
@@ -161,13 +216,16 @@ function isMutationAffectingHoveredElement(
     mouseY <= previousRect.bottom;
 
   console.log(
-    "[Antishift] Mouse was over hovered button:",
+    "[Antishift] Mouse was over hovered clickable element:",
     wasMouseOverHovered
   );
 
-  // Return true if position changed and mouse was over the button at previous position
+  // Return true if position changed and mouse was over the clickable element at previous position
   const result = hasPositionChanged && wasMouseOverHovered;
-  console.log("[Antishift] Mutation affects hovered button:", result);
+  console.log(
+    "[Antishift] Mutation affects hovered clickable element:",
+    result
+  );
   return result;
 }
 
@@ -344,20 +402,17 @@ function myAnimationLoop(timestamp) {
     element !== document.body &&
     element !== document.documentElement
   ) {
-    // Check if the element is a button
-    const isButton =
-      element.tagName === "BUTTON" ||
-      (element.getAttribute && element.getAttribute("role") === "button") ||
-      (element.type && element.type === "button");
+    // Check if the element is clickable
+    const isClickable = isElementClickable(element);
 
-    if (isButton) {
-      // Store the bounding rectangle of the hovered button
+    if (isClickable) {
+      // Store the bounding rectangle of the hovered clickable element
       const newRect = element.getBoundingClientRect();
 
       // Only update if element changed
       if (element !== hoveredElement) {
         console.log(
-          "[Antishift] Hovered button changed to:",
+          "[Antishift] Hovered clickable element changed to:",
           element.tagName,
           element.id,
           element.className
@@ -369,8 +424,8 @@ function myAnimationLoop(timestamp) {
         hoveredElementRect = newRect;
       }
     } else if (hoveredElement) {
-      // If we were hovering a button but now we're not, clear the hovered element
-      console.log("[Antishift] No longer hovering a button");
+      // If we were hovering a clickable element but now we're not, clear the hovered element
+      console.log("[Antishift] No longer hovering a clickable element");
       hoveredElement = null;
       hoveredElementRect = null;
     }
