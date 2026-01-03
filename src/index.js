@@ -153,13 +153,12 @@ function isMutationAffectingHoveredElement(
   }
 
   // Check if mouse was over the hovered button at its previous position
-  const mouseXRelative = mouseX - window.scrollX;
-  const mouseYRelative = mouseY - window.scrollY;
+  // Both mouseX/mouseY and previousRect are viewport-relative, so we can compare directly
   const wasMouseOverHovered =
-    mouseXRelative >= previousRect.left &&
-    mouseXRelative <= previousRect.right &&
-    mouseYRelative >= previousRect.top &&
-    mouseYRelative <= previousRect.bottom;
+    mouseX >= previousRect.left &&
+    mouseX <= previousRect.right &&
+    mouseY >= previousRect.top &&
+    mouseY <= previousRect.bottom;
 
   console.log(
     "[Antishift] Mouse was over hovered button:",
